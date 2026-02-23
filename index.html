@@ -423,8 +423,68 @@ scene.add(flashlight.target);
             osc.connect(g); g.connect(audioCtx.destination);
             osc.start(); osc.stop(audioCtx.currentTime + 1.5);
         }
+        // --- SUSTITUYE DESDE DONDE EMPIEZAN LAS VARIABLES DE CONTROL HASTA EL FINAL DEL SCRIPT ---
+
+        // --- LÓGICA DE CONTROL (REEMPLAZO TOTAL) ---
         let yaw = 0, pitch = 0, keys = {}, startTime = Date.now(), locked = false;
-        document.addEventListener('mousedown', () => document.body.requestPointerLock());
+        
+        // Variables globales para evitar error de pantalla negra
+        let joystickPos = { x: 0, y: 0 };
+        let isJoystickActive = false;
+        let flashlightOn = true;
+
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || ('ontouchstart' in window);
+
+        if (isMobile) {
+            document.getElementById('mobile-controls').style.display = 'block';
+            document.getElementById('mobile-actions').style.display = 'block';
+            const joy = document.getElementById('mobile-controls');
+            const stick = document.getElementById('joystick-stick');
+
+            joy.addEventListener('touchstart', (e) => { isJoystickActive = true; startCollapseAudio(); }); // Activa audio al tocar
+            joy.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const rect = joy.getBoundingClientRect();
+                const touch = e.touches[0];
+                const dx = touch.clientX - (rect.left + 75);
+                const dy = touch.clientY - (rect.top + 75);
+                const dist = Math.min(Math.sqrt(dx*dx + dy*dy), 50);
+                const angle = Math.atan2(dy, dx);
+                joystickPos.x = Math.cos(angle) * (dist / 50);
+                joystickPos.y = Math.sin(angle) * (dist / 50);
+                stick.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+            });
+            joy.addEventListener('touchend', () => {
+                isJoystickActive = false; joystickPos = { x: 0, y: 0 };
+                stick.style.transform = `translate(-50%, -50%)`;
+            });
+
+            let lastX, lastY;
+            document.addEventListener('touchstart', e => { 
+                if(e.target.id !== 'mobile-controls') { 
+                    lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; 
+                    startCollapseAudio(); 
+                }
+            });
+            document.addEventListener('touchmove', e => {
+                if(!locked && e.target.id !== 'mobile-controls') {
+                    yaw -= (e.touches[0].clientX - lastX) * 0.005;
+                    pitch -= (e.touches[0].clientY - lastY) * 0.005;
+                    pitch = Math.max(-1.5, Math.min(1.5, pitch));
+                    lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+                }
+            });
+
+            document.getElementById('btn-flashlight').addEventListener('touchstart', () => {
+                flashlightOn = !flashlightOn;
+                flashlight.intensity = flashlightOn ? 5.5 : 0;
+            });
+        }
+
+        document.addEventListener('mousedown', () => { 
+            if(!isMobile) document.body.requestPointerLock(); 
+            startCollapseAudio(); 
+        });
         document.addEventListener('keydown', (e) => { if(!locked) keys[e.code] = true; });
         document.addEventListener('keyup', (e) => keys[e.code] = false);
         document.addEventListener('mousemove', (e) => {
@@ -439,16 +499,17 @@ scene.add(flashlight.target);
         function animate() {
             requestAnimationFrame(animate);
             const elapsed = (Date.now() - startTime) / 1000;
+            updateCollapseAudio(elapsed);
 
-           if (!locked) {
+            if (!locked) {
                 const s = 0.18;
-                // Teclado
+                // Control Teclado
                 if (keys['KeyW']) { camera.position.x -= Math.sin(yaw)*s; camera.position.z -= Math.cos(yaw)*s; }
                 if (keys['KeyS']) { camera.position.x += Math.sin(yaw)*s; camera.position.z += Math.cos(yaw)*s; }
                 if (keys['KeyA']) { camera.position.x -= Math.cos(yaw)*s; camera.position.z += Math.sin(yaw)*s; }
                 if (keys['KeyD']) { camera.position.x += Math.cos(yaw)*s; camera.position.z -= Math.sin(yaw)*s; }
 
-                // Joystick Móvil
+                // Control Joystick
                 if (isJoystickActive) {
                     camera.position.x -= Math.sin(yaw) * (-joystickPos.y * s);
                     camera.position.z -= Math.cos(yaw) * (-joystickPos.y * s);
@@ -456,7 +517,6 @@ scene.add(flashlight.target);
                     camera.position.z -= Math.sin(yaw) * (joystickPos.x * s);
                 }
 
-                // Colisión y Linterna
                 const targetY = getH(camera.position.x, camera.position.z) + 3.5;
                 camera.position.y += (targetY - camera.position.y) * 0.1;
                 flashlight.position.copy(camera.position);
@@ -465,114 +525,60 @@ scene.add(flashlight.target);
             }
             camera.rotation.set(pitch, yaw, 0, 'YXZ');
 
-         // --- SECUENCIA DE FALLO CATASTRÓFICO ---
-        const codeOverlay = document.getElementById('code-overlay');
-        const glitchLines = document.getElementById('glitch-lines');
-        const vignette = document.getElementById('vignette');
-        const scanlines = document.getElementById('scanlines');
-        const errorHud = document.getElementById('error-hud');
-        const panicCounter = document.getElementById('panic-counter');
+            const codeOverlay = document.getElementById('code-overlay');
+            const glitchLines = document.getElementById('glitch-lines');
+            const errorHud = document.getElementById('error-hud');
+            const panicCounter = document.getElementById('panic-counter');
 
-        // FASE 1 (55-58s): Primeros síntomas — parpadeo y HUD de error
-        if (elapsed > 55 && elapsed < 58) {
-            const f = (elapsed - 55) / 3;
-            errorHud.style.display = 'block';
-            vignette.style.display = 'block';
-            vignette.style.opacity = f * 0.5;
-            // Parpadeo agresivo de linterna
-            flashlight.intensity = Math.random() > 0.2 ? 5.5 : 0;
-            // Puntos de "recuperando..."
-            const dots = '.'.repeat(Math.floor(elapsed * 3) % 4);
-            const recoverEl = document.getElementById('recover-dots');
-            if (recoverEl) recoverEl.textContent = dots;
-        }
-
-        // FASE 2 (58-62s): Lluvia de código + glitch lines
-        if (elapsed > 58 && elapsed < 63) {
-            codeOverlay.style.display = 'block';
-            scanlines.style.display = 'block';
-            glitchLines.style.display = 'block';
-            renderer.domElement.classList.add('pre-catastrophe');
-
-            const f = 1 - (elapsed - 58) / 5;
-            flashlight.intensity = (Math.random() > 0.15 ? 5.5 : 0) * f;
-
-            // Fragmentos de código en colores caóticos
-            const colorClasses = ['red', 'amber', 'white', 'cyan', ''];
-            if (Math.random() > 0.55) {
-                const d = document.createElement('div');
-                d.className = 'code-fragment ' + colorClasses[Math.floor(Math.random() * colorClasses.length)];
-                d.style.left = Math.random() * 95 + '%';
-                d.style.top = Math.random() * 95 + '%';
-                d.style.fontSize = (9 + Math.random() * 16) + 'px';
-                d.innerText = codes[Math.floor(Math.random() * codes.length)];
-                codeOverlay.appendChild(d);
-                setTimeout(() => d.remove(), 1200);
+            if (elapsed > 55 && elapsed < 58) {
+                errorHud.style.display = 'block';
+                document.getElementById('vignette').style.display = 'block';
+                flashlight.intensity = Math.random() > 0.2 ? 5.5 : 0;
             }
 
-            // Líneas de glitch horizontales
-            if (Math.random() > 0.6) {
-                const gl = document.createElement('div');
-                gl.className = 'gline';
-                gl.style.top = Math.random() * 100 + '%';
-                gl.style.height = (Math.random() * 10 + 2) + 'px';
-                gl.style.background = Math.random() > 0.5 ? 'rgba(255,0,0,0.7)' : 'rgba(0,255,255,0.5)';
-                glitchLines.appendChild(gl);
-                setTimeout(() => gl.remove(), 80);
+            if (elapsed > 58 && elapsed < 63) {
+                codeOverlay.style.display = 'block';
+                document.getElementById('scanlines').style.display = 'block';
+                glitchLines.style.display = 'block';
+                renderer.domElement.classList.add('pre-catastrophe');
+                if (Math.random() > 0.55) {
+                    const d = document.createElement('div');
+                    d.className = 'code-fragment white';
+                    d.style.left = Math.random() * 95 + '%'; d.style.top = Math.random() * 95 + '%';
+                    d.innerText = codes[Math.floor(Math.random() * codes.length)];
+                    codeOverlay.appendChild(d);
+                    setTimeout(() => d.remove(), 1200);
+                }
             }
-        }
-    }
 
-        // FASE 3 (62-65s): COLAPSO TOTAL — todo se rompe
-        if (elapsed > 62 && elapsed < 65) {
-            const f2 = (elapsed - 62) / 3;
-            flashlight.intensity = Math.random() > 0.5 ? 5.5 * (1 - f2) : 0;
-            renderer.domElement.classList.remove('pre-catastrophe');
-            renderer.domElement.classList.add('catastrophe');
+            if (elapsed > 62 && elapsed < 65) {
+                renderer.domElement.classList.add('catastrophe');
+                panicCounter.style.display = 'block';
+                panicCounter.textContent = Math.ceil(65 - elapsed).toString().padStart(2, '0');
 
-            // Countdown de pánico
-            panicCounter.style.display = 'block';
-            const countdown = Math.max(0, Math.ceil(65 - elapsed));
-            panicCounter.textContent = countdown.toString().padStart(2, '0');
-
-            // Mega-fragmentos de código
-            if (Math.random() > 0.3) {
-                // Mega-fragmentos de código (Saturación masiva)
-            for(let i=0; i<15; i++) { // Genera 15 por cada frame
-                const d = document.createElement('div');
-                d.className = 'code-fragment ' + (Math.random() > 0.5 ? 'red' : 'white');
-                d.style.left = Math.random() * 95 + '%';
-                d.style.top = Math.random() * 95 + '%';
-                d.style.fontSize = (Math.random() * 40 + 10) + 'px';
-                d.innerText = codes[Math.floor(Math.random() * codes.length)];
-                codeOverlay.appendChild(d);
-                setTimeout(() => d.remove(), 300); // Se borran rápido para no colgar el PC del todo
+                for(let i=0; i<10; i++) {
+                    const d = document.createElement('div');
+                    d.className = 'code-fragment red';
+                    d.style.left = Math.random() * 95 + '%'; d.style.top = Math.random() * 95 + '%';
+                    d.innerText = codes[Math.floor(Math.random() * codes.length)];
+                    codeOverlay.appendChild(d);
+                    setTimeout(() => d.remove(), 400);
+                }
             }
-        }
-    }
-
-        if (elapsed >= 65) {
-            locked = true;
-            flashlight.intensity = 0;
-            panicCounter.textContent = '00';
-            if (elapsed > 65.3) {
-                document.getElementById('bsod').style.display = 'block';
-                // Limpiar overlays
-                codeOverlay.style.display = 'none';
-                glitchLines.style.display = 'none';
-                scanlines.style.display = 'none';
-                vignette.style.display = 'none';
-                errorHud.style.display = 'none';
-            }
-        }
 
             if (elapsed >= 65) {
-                locked = true; // INPUT MUERTO
+                locked = true;
                 flashlight.intensity = 0;
-                renderer.domElement.classList.add('glitch-heavy');
-                if(elapsed > 66.5) document.getElementById('bsod').style.display = 'block';
+                panicCounter.textContent = '00';
+                if (elapsed > 65.2 && document.getElementById('bsod').style.display !== 'block') {
+                    document.getElementById('bsod').style.display = 'block';
+                    playBSODBeep();
+                }
             }
-            
+
+            renderer.render(scene, camera);
+        }
+        animate();
     </script>
 </body>
 </html>
