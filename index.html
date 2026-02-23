@@ -521,6 +521,7 @@ scene.add(flashlight.target);
                 setTimeout(() => gl.remove(), 80);
             }
         }
+    }
 
         // FASE 3 (62-65s): COLAPSO TOTAL — todo se rompe
         if (elapsed > 62 && elapsed < 65) {
@@ -548,6 +549,7 @@ scene.add(flashlight.target);
                 setTimeout(() => d.remove(), 300); // Se borran rápido para no colgar el PC del todo
             }
         }
+    }
 
         if (elapsed >= 65) {
             locked = true;
@@ -570,25 +572,7 @@ scene.add(flashlight.target);
                 renderer.domElement.classList.add('glitch-heavy');
                 if(elapsed > 66.5) document.getElementById('bsod').style.display = 'block';
             }
-// ── DISTORSIÓN DE TERRENO ──
-            if (elapsed > 58 && elapsed < 65) {
-                const corruptF = (elapsed - 58) / 7;
-                const verts = geo.attributes.position.array;
-                for (let i = 0; i < verts.length; i += 3) {
-                    const oy = originalVerts[i+1];
-                    const ox = originalVerts[i];
-                    const wave = Math.sin(elapsed * 3 + ox * 0.3) * corruptF * 4;
-                    const spike = (Math.random() > 0.998) ? (Math.random() * 20 * corruptF) : 0;
-                    verts[i+1] = oy + wave + spike;
-                }
-                geo.attributes.position.needsUpdate = true;
-                geo.computeVertexNormals();
-            } else if (elapsed >= 65 && !terrainCorrupted) {
-                terrainCorrupted = true;
-            }
-            renderer.render(scene, camera);
-        }
-        animate();
+            
     </script>
 </body>
 </html>
