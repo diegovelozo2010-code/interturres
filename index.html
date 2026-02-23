@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>SISTEMA CORRUPTO - FINAL</title>
+   <style>
+    /* ── CONTROLES MÓVILES ── */
+    #mobile-controls {
+        position: fixed; bottom: 30px; left: 30px;
+        width: 150px; height: 150px;
+        background: rgba(255, 255, 255, 0.05);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        border-radius: 50%; display: none; z-index: 500;
+        touch-action: none;
+    }
+    #joystick-stick {
+        position: absolute; top: 50%; left: 50%;
+        width: 60px; height: 60px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 50%; transform: translate(-50%, -50%);
+    }
+    #mobile-actions {
+        position: fixed; bottom: 40px; right: 30px;
+        display: none; z-index: 500;
+    }
+    .mobile-btn {
+        width: 70px; height: 70px;
+        background: rgba(255, 255, 255, 0.1);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        color: white; border-radius: 50%;
+        font-family: monospace; font-weight: bold;
+        display: flex; align-items: center; justify-content: center;
+        user-select: none; -webkit-tap-highlight-color: transparent;
+    }
+    /* ── BASE ── */
+    body {
+        margin: 0; overflow: hidden; background-color: #000;
+        font-family: 'Courier New', monospace; cursor: crosshair;
+    }
+
+    /* ── OVERLAY DE CÓDIGO CATASTRÓFICO ── */
+    #code-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none; z-index: 100; display: none; overflow: hidden;
+    }
+    .code-fragment {
+        position: absolute;
+        font-family: 'Courier New', monospace;
+        animation: fragmentFade 1.2s forwards;
+        text-shadow: 0 0 8px currentColor;
+        white-space: nowrap;
+    }
+    .code-fragment.green  { color: #00ff41; }
+    .code-fragment.red    { color: #ff0000; }
+    .code-fragment.amber  { color: #ff8800; }
+    .code-fragment.white  { color: #ffffff; }
+    .code-fragment.cyan   { color: #00ffff; }
+    @keyframes fragmentFade {
+        0%   { opacity: 1;   transform: translateY(0)   scaleX(1);    }
+        60%  { opacity: 0.7; transform: translateY(4px)  scaleX(1.03); }
+        100% { opacity: 0;   transform: translateY(-8px) scaleX(0.97); }
+    }
+
+    /* ── LÍNEAS DE GLITCH HORIZONTAL ── */
+    #glitch-lines {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none; z-index: 150; display: none;
+    }
+    .gline {
+        position: absolute; left: 0; width: 100%;
+        animation: glineAnim 0.08s forwards;
+        mix-blend-mode: screen;
+    }
+    @keyframes glineAnim {
+        0%   { transform: scaleX(1)   translateX(0);   opacity: 1;   }
+        50%  { transform: scaleX(0.7) translateX(5%);  opacity: 0.8; }
+        100% { transform: scaleX(0)   translateX(-10%); opacity: 0;  }
+    }
+
+    /* ── VIGNETTE DE PÁNICO ── */
+    #vignette {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none; z-index: 90; display: none;
+        background: radial-gradient(ellipse at center, transparent 30%, rgba(200,0,0,0.45) 100%);
+        animation: vignettePulse 0.4s infinite alternate;
+    }
+    @keyframes vignettePulse {
+        from { opacity: 0.5; }
+        to   { opacity: 1;   }
+    }
+
+    /* ── HUD DE ERROR ── */
+    #error-hud {
+        position: fixed; top: 20px; left: 20px;
+        color: #ff2200; font-size: 11px; font-family: 'Courier New', monospace;
+        z-index: 200; display: none; line-height: 1.8;
+        text-shadow: 0 0 10px #ff2200, 0 0 22px #ff2200;
+        border-left: 2px solid #ff2200;
+        padding-left: 12px;
+        animation: hudBlink 0.2s infinite;
+    }
+    @keyframes hudBlink {
+        0%, 88% { opacity: 1;   }
+        89%,100% { opacity: 0.2; }
+    }
+
+    /* ── SCANLINES ── */
+    #scanlines {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        pointer-events: none; z-index: 95; display: none;
+        background: repeating-linear-gradient(
+            to bottom,
+            transparent,           transparent 2px,
+            rgba(0,0,0,0.35) 2px,  rgba(0,0,0,0.35) 4px
+        );
+        animation: scanMove 0.3s linear infinite;
+    }
+    @keyframes scanMove {
+        from { background-position: 0 0;  }
+        to   { background-position: 0 4px; }
+    }
+
+    /* ── COUNTDOWN DE PÁNICO ── */
+    #panic-counter {
+        position: fixed; bottom: 30px; right: 30px;
+        color: #ff0000; font-size: 72px; font-family: 'Courier New', monospace;
+        font-weight: bold; z-index: 200; display: none;
+        text-shadow: 0 0 20px #ff0000, 0 0 50px #ff0000, 0 0 80px #880000;
+        animation: counterGlitch 0.09s infinite;
+    }
+    @keyframes counterGlitch {
+        0%   { transform: translate(0,0)     skewX(0deg);  }
+        20%  { transform: translate(-3px,1px) skewX(-3deg); }
+        40%  { transform: translate(3px,-1px) skewX(2deg);  }
+        60%  { transform: translate(-2px,2px) skewX(4deg);  }
+        80%  { transform: translate(2px,-2px) skewX(-2deg); }
+        100% { transform: translate(0,0)     skewX(0deg);  }
+    }
+
+    /* ── BSOD ── */
+    #bsod {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: #0050d0; color: white; display: none;
+        z-index: 2000; padding: 8% 12%; box-sizing: border-box;
+        font-family: 'Courier New', monospace;
+    }
+    #bsod::before {
+        content: '';
+        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+        background: repeating-linear-gradient(
+            to bottom, transparent, transparent 3px,
+            rgba(0,0,0,0.12) 3px, rgba(0,0,0,0.12) 4px
+        );
+        pointer-events: none;
+    }
+    #bsod .sad       { font-size: 110px; display: block; margin-bottom: 16px; line-height: 1; }
+    #bsod .title     { font-size: 26px; font-weight: bold; margin-bottom: 28px; }
+    #bsod .body-text { font-size: 14px; line-height: 2.1; max-width: 580px; }
+    #bsod .progress-bar {
+        width: 100%; height: 4px;
+        background: rgba(255,255,255,0.2);
+        margin: 18px 0; overflow: hidden; position: relative;
+    }
+    #bsod .progress-bar::after {
+        content: ''; position: absolute; left: 0; top: 0;
+        height: 100%; background: white;
+        animation: fillBar 1.2s ease-out forwards;
+    }
+    @keyframes fillBar { from { width: 0; } to { width: 100%; } }
+    #bsod .stop-code {
+        position: absolute; bottom: 10%; left: 12%;
+        font-size: 12px; opacity: 0.75; line-height: 2;
+    }
+    #bsod .qr-box {
+        position: absolute; bottom: 8%; right: 12%;
+        width: 76px; height: 76px; border: 2px solid white;
+        display: grid; grid-template-columns: repeat(6,1fr);
+        grid-template-rows: repeat(6,1fr); gap: 2px; padding: 5px;
+    }
+    #bsod .qr-box div { background: white; }
+    #bsod .qr-box div.e { background: transparent; }
+
+    /* ── FILTROS DE CATÁSTROFE EN EL CANVAS ── */
+    .pre-catastrophe {
+        animation: preShake 0.07s infinite;
+    }
+    @keyframes preShake {
+        0%   { transform: translate(1px,0);   filter: hue-rotate(0deg)   contrast(1.8) saturate(0.4); }
+        33%  { transform: translate(-2px,1px); filter: hue-rotate(80deg)  contrast(2.2) saturate(0.2); }
+        66%  { transform: translate(1px,-1px); filter: hue-rotate(160deg) contrast(1.8) saturate(0.3); }
+        100% { transform: translate(0,0);      filter: hue-rotate(0deg)   contrast(1.8) saturate(0.4); }
+    }
+    .catastrophe {
+        animation: shake 0.03s infinite;
+        filter: contrast(6) hue-rotate(270deg) invert(0.25) saturate(3);
+    }
+    @keyframes shake {
+        0%   { transform: translate(6px,5px)   rotate(1.2deg);  }
+        50%  { transform: translate(-6px,-5px) rotate(-1.2deg); }
+        100% { transform: translate(0,0)        rotate(0deg);    }
+    }
+</style>
+</head>
+<body>
+    <div id="mobile-controls">
+        <div id="joystick-stick"></div>
+    </div>
+    <div id="mobile-actions">
+        <div class="mobile-btn" id="btn-flashlight">F</div>
+    </div>
+    <div id="code-overlay"></div>
+    <div id="glitch-lines"></div>
+    <div id="vignette"></div>
+    <div id="scanlines"></div>
+    <div id="error-hud">
+        ■ KERNEL PANIC — PROCESO: FOREST_INSTABILITY.SYS<br>
+        ▶ DIRECCIÓN: 0xFFFFF802_000F4A12<br>
+        ▶ THREAD: 0x000000000000007C<br>
+        ■ MEMORIA CORRUPTA: 0x00000000C000009A<br>
+        ▶ STACK OVERFLOW EN: VIGENERE.DLL<br>
+        ■ INTENTANDO RECUPERAR...<span id="recover-dots"></span>
+    </div>
+    <div id="panic-counter">10</div>
+    <div id="bsod">
+        <span class="sad">:(</span>
+        <div class="title">Your PC ran into a problem and needs to restart.</div>
+        <div class="body-text">
+            We're collecting some error info, and then we'll restart for you.<br><br>
+            <div class="progress-bar"></div>
+            100% complete — FAILED TO RECOVER
+        </div>
+        <div class="stop-code">
+            Stop code: &nbsp;<strong>CRITICAL_STRUCTURE_CORRUPTION</strong><br>
+            What failed: &nbsp;FOREST_INSTABILITY.SYS<br>
+            Fault bucket: &nbsp;0x000000000000007C, type 0<br>
+            Event name: &nbsp;&nbsp;BlueScreen<br>
+            Response: &nbsp;&nbsp;&nbsp;&nbsp;Not available<br>
+            Cab Id: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;VIGENERE_LOST::0xDEAD
+        </div>
+        <div class="qr-placeholder">
+            <div></div><div style="background:transparent"></div><div></div><div style="background:transparent"></div><div></div>
+            <div style="background:transparent"></div><div></div><div style="background:transparent"></div><div></div><div style="background:transparent"></div>
+            <div></div><div style="background:transparent"></div><div></div><div style="background:transparent"></div><div></div>
+            <div style="background:transparent"></div><div></div><div></div><div></div><div style="background:transparent"></div>
+            <div></div><div style="background:transparent"></div><div></div><div style="background:transparent"></div><div></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        const scene = new THREE.Scene();
+        // Niebla: Color casi negro, densidad ajustada para que el horizonte desaparezca
+scene.fog = new THREE.FogExp2(0x010103, 0.035);
+scene.background = new THREE.Color(0x010103);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+        // --- LUZ AMBIENTAL REAL (NO LAVA LA ESCENA) ---
+const hemiLight = new THREE.HemisphereLight(
+    0x111122, // cielo oscuro azulado
+    0x000000, // suelo
+    0.3       // intensidad baja
+);
+scene.add(hemiLight);
+
+        // --- TERRENO IRREGULAR ---
+        const getH = (x, z) => Math.sin(x*0.05)*6 + Math.cos(z*0.05)*6 + Math.sin(x*0.1)*2;
+        const geo = new THREE.PlaneGeometry(1000, 1000, 60, 60);
+        geo.rotateX(-Math.PI/2);
+        const v = geo.attributes.position.array;
+        for (let i = 0; i < v.length; i += 3) v[i+1] = getH(v[i], v[i+2]);
+        geo.computeVertexNormals();
+        const originalVerts = new Float32Array(geo.attributes.position.array);
+        let terrainCorrupted = false;
+        const terrain = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0x050505 }));
+        scene.add(terrain);
+
+        // --- LINTERNA ---
+        const flashlight = new THREE.SpotLight(
+    0xffffff,
+    5.5,           // intensidad real
+    120,           // alcance mayor
+    Math.PI / 3,   // cono más ancho (humano)
+    0.2,           // borde suave
+    1
+);
+flashlight.castShadow = false; // IMPORTANTE: más luz efectiva
+scene.add(flashlight);
+scene.add(flashlight.target);
+
+        // --- ÁRBOLES ORGÁNICOS (Copa + Tronco) ---
+        for (let i = 0; i < 400; i++) {
+            const group = new THREE.Group();
+            const x = (Math.random()-0.5)*800, z = (Math.random()-0.5)*800;
+            const h = getH(x, z);
+            
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.4, 15), new THREE.MeshStandardMaterial({color: 0x010101}));
+            trunk.position.y = 7.5;
+            
+            const leaves = new THREE.Mesh(new THREE.ConeGeometry(4, 12, 4), new THREE.MeshStandardMaterial({color: 0x020302}));
+            leaves.position.y = 15;
+            leaves.rotation.y = Math.random();
+
+            group.add(trunk); group.add(leaves);
+            group.position.set(x, h, z);
+            scene.add(group);
+        }
+
+        // --- LA CASA "ENFERMA" (Inclinada) ---
+        const house = new THREE.Group();
+        const wallMat = new THREE.MeshStandardMaterial({color: 0x080808});
+        const addWall = (w, h, d, x, y, z, r=0) => {
+            const m = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), wallMat);
+            m.position.set(x,y,z); m.rotation.y = r; house.add(m);
+        };
+        addWall(15, 10, 0.5, 0, 5, -7.5); // Trasera
+        addWall(0.5, 10, 15, -7.5, 5, 0); // Lateral
+        addWall(15, 10, 0.5, 0, 5, 7.5);  // Frontal con hueco
+        house.rotation.z = 0.05; // Inclinación sutil "errónea"
+        house.position.set(20, getH(20, 20)-1, 20); // Hundida
+        scene.add(house);
+
+        // Fuego sutil
+        const fireLight = new THREE.PointLight(0xff3300, 2, 20);
+        fireLight.position.set(18, getH(18,18)+2, 18);
+        scene.add(fireLight);
+        // --- LAS DOS TORRES GEMELAS QUEMADAS ---
+        const towerPos = { x: -60, z: -80 }; // Ubicación en el cuadrante opuesto a la casa
+        for (let j = 0; j < 2; j++) {
+            const towerGroup = new THREE.Group();
+            const tx = towerPos.x + (j * 45); // Espaciado entre ellas
+            const tz = towerPos.z + (j * 5);  // Desalineación sutil
+            const ty = getH(tx, tz);
+
+            // Cuerpo principal (enorme y oscuro)
+            const body = new THREE.Mesh(
+                new THREE.BoxGeometry(15, 180, 15), 
+                new THREE.MeshStandardMaterial({ color: 0x020202 })
+            );
+            body.position.y = 80; // Altura para que se vea imponente
+            towerGroup.add(body);
+
+            // Secciones de "escombros" o quemaduras
+            for(let k = 0; k < 8; k++) {
+                const ruin = new THREE.Mesh(
+                    new THREE.BoxGeometry(16, 4, 16), 
+                    new THREE.MeshStandardMaterial({ color: 0x000000 })
+                );
+                ruin.position.y = Math.random() * 150;
+                ruin.rotation.y = Math.random();
+                ruin.rotation.x = (Math.random() - 0.5) * 0.2;
+                towerGroup.add(ruin);
+            }
+
+            towerGroup.position.set(tx, ty - 5, tz);
+            towerGroup.rotation.z = (j === 0 ? -0.02 : 0.02); // Se inclinan levemente hacia afuera
+            scene.add(towerGroup);
+            
+            // Luz de baliza roja fallida en la cima
+            const beacon = new THREE.PointLight(0xff0000, 0.8, 40);
+            beacon.position.set(tx, ty + 170, tz);
+            scene.add(beacon);
+        }
+
+        // --- LÓGICA DE CONTROL ---
+        // ── AUDIO ENGINE ──
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let audioStarted = false;
+        let droneNode = null, droneGain = null;
+
+        function startCollapseAudio() {
+            if (audioStarted) return;
+            audioStarted = true;
+            droneNode = audioCtx.createOscillator();
+            droneGain = audioCtx.createGain();
+            droneNode.type = 'sawtooth';
+            droneNode.frequency.setValueAtTime(55, audioCtx.currentTime);
+            droneGain.gain.setValueAtTime(0, audioCtx.currentTime);
+            droneNode.connect(droneGain);
+            droneGain.connect(audioCtx.destination);
+            droneNode.start();
+
+            const bufferSize = audioCtx.sampleRate * 2;
+            const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = noiseBuffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noiseSource = audioCtx.createBufferSource();
+            noiseSource.buffer = noiseBuffer;
+            noiseSource.loop = true;
+            const noiseGain = audioCtx.createGain();
+            noiseGain.gain.setValueAtTime(0, audioCtx.currentTime);
+            noiseGain.gain.linearRampToValueAtTime(0.08, audioCtx.currentTime + 8);
+            noiseGain.gain.linearRampToValueAtTime(0.25, audioCtx.currentTime + 10);
+            noiseSource.connect(noiseGain);
+            noiseGain.connect(audioCtx.destination);
+            noiseSource.start();
+            window._noiseGain = noiseGain;
+        }
+
+        function updateCollapseAudio(elapsed) {
+            if (!audioStarted || !droneNode) return;
+            const t = audioCtx.currentTime;
+            const f = Math.min((elapsed - 55) / 10, 1);
+            droneNode.frequency.setValueAtTime(55 + f * 180, t);
+            droneGain.gain.setValueAtTime(f * 0.15, t);
+            if (elapsed > 62) {
+                const f2 = (elapsed - 62) / 3;
+                droneNode.frequency.setValueAtTime(55 + 180 + f2 * 400, t);
+                droneGain.gain.setValueAtTime(0.25, t);
+                if (window._noiseGain) window._noiseGain.gain.setValueAtTime(0.4 + f2 * 0.3, t);
+            }
+        }
+
+        function playBSODBeep() {
+            const osc = audioCtx.createOscillator();
+            const g = audioCtx.createGain();
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+            g.gain.setValueAtTime(0.6, audioCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 1.5);
+            osc.connect(g); g.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + 1.5);
+        }
+        let yaw = 0, pitch = 0, keys = {}, startTime = Date.now(), locked = false;
+        document.addEventListener('mousedown', () => document.body.requestPointerLock());
+        document.addEventListener('keydown', (e) => { if(!locked) keys[e.code] = true; });
+        document.addEventListener('keyup', (e) => keys[e.code] = false);
+        document.addEventListener('mousemove', (e) => {
+            if (document.pointerLockElement && !locked) {
+                yaw -= e.movementX * 0.002; pitch -= e.movementY * 0.002;
+                pitch = Math.max(-1.5, Math.min(1.5, pitch));
+            }
+        });
+
+        const codes = ["66 61 69 6c", "U09T", "0x000F4", "VIGENERE_LOST", "§∆ø", "REBOOT_REQUIRED"];
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const elapsed = (Date.now() - startTime) / 1000;
+
+           if (!locked) {
+                const s = 0.18;
+                // Teclado
+                if (keys['KeyW']) { camera.position.x -= Math.sin(yaw)*s; camera.position.z -= Math.cos(yaw)*s; }
+                if (keys['KeyS']) { camera.position.x += Math.sin(yaw)*s; camera.position.z += Math.cos(yaw)*s; }
+                if (keys['KeyA']) { camera.position.x -= Math.cos(yaw)*s; camera.position.z += Math.sin(yaw)*s; }
+                if (keys['KeyD']) { camera.position.x += Math.cos(yaw)*s; camera.position.z -= Math.sin(yaw)*s; }
+
+                // Joystick Móvil
+                if (isJoystickActive) {
+                    camera.position.x -= Math.sin(yaw) * (-joystickPos.y * s);
+                    camera.position.z -= Math.cos(yaw) * (-joystickPos.y * s);
+                    camera.position.x += Math.cos(yaw) * (joystickPos.x * s);
+                    camera.position.z -= Math.sin(yaw) * (joystickPos.x * s);
+                }
+
+                // Colisión y Linterna
+                const targetY = getH(camera.position.x, camera.position.z) + 3.5;
+                camera.position.y += (targetY - camera.position.y) * 0.1;
+                flashlight.position.copy(camera.position);
+                const dir = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                flashlight.target.position.copy(camera.position).add(dir);
+            }
+            camera.rotation.set(pitch, yaw, 0, 'YXZ');
+
+         // --- SECUENCIA DE FALLO CATASTRÓFICO ---
+        const codeOverlay = document.getElementById('code-overlay');
+        const glitchLines = document.getElementById('glitch-lines');
+        const vignette = document.getElementById('vignette');
+        const scanlines = document.getElementById('scanlines');
+        const errorHud = document.getElementById('error-hud');
+        const panicCounter = document.getElementById('panic-counter');
+
+        // FASE 1 (55-58s): Primeros síntomas — parpadeo y HUD de error
+        if (elapsed > 55 && elapsed < 58) {
+            const f = (elapsed - 55) / 3;
+            errorHud.style.display = 'block';
+            vignette.style.display = 'block';
+            vignette.style.opacity = f * 0.5;
+            // Parpadeo agresivo de linterna
+            flashlight.intensity = Math.random() > 0.2 ? 5.5 : 0;
+            // Puntos de "recuperando..."
+            const dots = '.'.repeat(Math.floor(elapsed * 3) % 4);
+            const recoverEl = document.getElementById('recover-dots');
+            if (recoverEl) recoverEl.textContent = dots;
+        }
+
+        // FASE 2 (58-62s): Lluvia de código + glitch lines
+        if (elapsed > 58 && elapsed < 63) {
+            codeOverlay.style.display = 'block';
+            scanlines.style.display = 'block';
+            glitchLines.style.display = 'block';
+            renderer.domElement.classList.add('pre-catastrophe');
+
+            const f = 1 - (elapsed - 58) / 5;
+            flashlight.intensity = (Math.random() > 0.15 ? 5.5 : 0) * f;
+
+            // Fragmentos de código en colores caóticos
+            const colorClasses = ['red', 'amber', 'white', 'cyan', ''];
+            if (Math.random() > 0.55) {
+                const d = document.createElement('div');
+                d.className = 'code-fragment ' + colorClasses[Math.floor(Math.random() * colorClasses.length)];
+                d.style.left = Math.random() * 95 + '%';
+                d.style.top = Math.random() * 95 + '%';
+                d.style.fontSize = (9 + Math.random() * 16) + 'px';
+                d.innerText = codes[Math.floor(Math.random() * codes.length)];
+                codeOverlay.appendChild(d);
+                setTimeout(() => d.remove(), 1200);
+            }
+
+            // Líneas de glitch horizontales
+            if (Math.random() > 0.6) {
+                const gl = document.createElement('div');
+                gl.className = 'gline';
+                gl.style.top = Math.random() * 100 + '%';
+                gl.style.height = (Math.random() * 10 + 2) + 'px';
+                gl.style.background = Math.random() > 0.5 ? 'rgba(255,0,0,0.7)' : 'rgba(0,255,255,0.5)';
+                glitchLines.appendChild(gl);
+                setTimeout(() => gl.remove(), 80);
+            }
+        }
+
+        // FASE 3 (62-65s): COLAPSO TOTAL — todo se rompe
+        if (elapsed > 62 && elapsed < 65) {
+            const f2 = (elapsed - 62) / 3;
+            flashlight.intensity = Math.random() > 0.5 ? 5.5 * (1 - f2) : 0;
+            renderer.domElement.classList.remove('pre-catastrophe');
+            renderer.domElement.classList.add('catastrophe');
+
+            // Countdown de pánico
+            panicCounter.style.display = 'block';
+            const countdown = Math.max(0, Math.ceil(65 - elapsed));
+            panicCounter.textContent = countdown.toString().padStart(2, '0');
+
+            // Mega-fragmentos de código
+            if (Math.random() > 0.3) {
+                // Mega-fragmentos de código (Saturación masiva)
+            for(let i=0; i<15; i++) { // Genera 15 por cada frame
+                const d = document.createElement('div');
+                d.className = 'code-fragment ' + (Math.random() > 0.5 ? 'red' : 'white');
+                d.style.left = Math.random() * 95 + '%';
+                d.style.top = Math.random() * 95 + '%';
+                d.style.fontSize = (Math.random() * 40 + 10) + 'px';
+                d.innerText = codes[Math.floor(Math.random() * codes.length)];
+                codeOverlay.appendChild(d);
+                setTimeout(() => d.remove(), 300); // Se borran rápido para no colgar el PC del todo
+            }
+        }
+
+        if (elapsed >= 65) {
+            locked = true;
+            flashlight.intensity = 0;
+            panicCounter.textContent = '00';
+            if (elapsed > 65.3) {
+                document.getElementById('bsod').style.display = 'block';
+                // Limpiar overlays
+                codeOverlay.style.display = 'none';
+                glitchLines.style.display = 'none';
+                scanlines.style.display = 'none';
+                vignette.style.display = 'none';
+                errorHud.style.display = 'none';
+            }
+        }
+
+            if (elapsed >= 65) {
+                locked = true; // INPUT MUERTO
+                flashlight.intensity = 0;
+                renderer.domElement.classList.add('glitch-heavy');
+                if(elapsed > 66.5) document.getElementById('bsod').style.display = 'block';
+            }
+// ── DISTORSIÓN DE TERRENO ──
+            if (elapsed > 58 && elapsed < 65) {
+                const corruptF = (elapsed - 58) / 7;
+                const verts = geo.attributes.position.array;
+                for (let i = 0; i < verts.length; i += 3) {
+                    const oy = originalVerts[i+1];
+                    const ox = originalVerts[i];
+                    const wave = Math.sin(elapsed * 3 + ox * 0.3) * corruptF * 4;
+                    const spike = (Math.random() > 0.998) ? (Math.random() * 20 * corruptF) : 0;
+                    verts[i+1] = oy + wave + spike;
+                }
+                geo.attributes.position.needsUpdate = true;
+                geo.computeVertexNormals();
+            } else if (elapsed >= 65 && !terrainCorrupted) {
+                terrainCorrupted = true;
+            }
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
